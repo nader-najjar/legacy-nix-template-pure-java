@@ -24,20 +24,22 @@ public final class LifecycleManager {
 
     private static final int SHUTDOWN_TIMEOUT_SECONDS = 10;
 
-    private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
+    private static final AtomicBoolean SHUTDOWN_REQUESTED = new AtomicBoolean(false);
 
-    private final CountDownLatch mainCompleted = new CountDownLatch(1);
+    private static final CountDownLatch MAIN_COMPLETED = new CountDownLatch(1);
+
+    private LifecycleManager() { }
 
     /**
      * Registers a JVM shutdown hook that sets the shutdown flag and waits
      * for the main thread to signal completion before allowing the JVM to exit.
      */
-    public void registerShutdownHook() {
+    public static void registerShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             LOGGER.debug("Shutdown signal received, waiting for main to complete...");
-            shutdownRequested.set(true);
+            SHUTDOWN_REQUESTED.set(true);
             try {
-                boolean completed = mainCompleted.await(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                boolean completed = MAIN_COMPLETED.await(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 if (!completed) {
                     LOGGER.warn("Main did not complete within {} seconds of shutdown signal",
                             SHUTDOWN_TIMEOUT_SECONDS);
@@ -54,15 +56,15 @@ public final class LifecycleManager {
      *
      * @return true if a shutdown signal (e.g., SIGTERM) has been received
      */
-    public boolean isShutdownRequested() {
-        return shutdownRequested.get();
+    public static boolean isShutdownRequested() {
+        return SHUTDOWN_REQUESTED.get();
     }
 
     /**
      * Signals that the main thread has completed execution and cleanup.
      * This unblocks the shutdown hook, allowing the JVM to exit.
      */
-    public void signalComplete() {
-        mainCompleted.countDown();
+    public static void signalComplete() {
+        MAIN_COMPLETED.countDown();
     }
 }

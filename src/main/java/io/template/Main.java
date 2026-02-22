@@ -21,8 +21,7 @@ public final class Main {
     private Main() { }
 
     public static void main(String[] args) {
-        LifecycleManager lifecycleManager = new LifecycleManager();
-        lifecycleManager.registerShutdownHook();
+        LifecycleManager.registerShutdownHook();
 
         int exitCode = 0;
         Injector injector = null;
@@ -38,12 +37,10 @@ public final class Main {
             exitCode = 1;
         } finally {
             cleanupResources(injector);
-            lifecycleManager.signalComplete();
+            LifecycleManager.signalComplete();
         }
 
-        if (exitCode != 0) {
-            System.exit(exitCode);
-        }
+        System.exit(exitCode);
     }
 
     private static void cleanupResources(Injector injector) {
