@@ -27,6 +27,12 @@ public class Calculator {
                 }
                 yield request.operandA() / request.operandB();
             }
+            case "MODULO" -> {
+                if (request.operandB() == 0) {
+                    throw new CalculationException("Modulo by zero");
+                }
+                yield request.operandA() % request.operandB();
+            }
             default -> throw new CalculationException("Unknown operation: " + request.operation());
         };
 
