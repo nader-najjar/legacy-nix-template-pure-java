@@ -1,4 +1,4 @@
-package io.template.samplebusinesslayer.logic;
+package io.template.samplebusinesslayer;
 
 import io.template.samplebusinesslayer.exceptions.CalculationException;
 import io.template.samplebusinesslayer.models.CalculationRequest;

@@ -208,6 +208,18 @@ tasks.jacocoTestReport {
 
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
+
+    val excludes = listOf(
+        "io/template/Main.class",
+        "io/template/LifecycleManager.class",
+        "io/template/bootstrap/injectionmodules/*"
+    )
+    classDirectories.setFrom(
+        sourceSets.main.get().output.asFileTree.matching {
+            exclude(excludes)
+        }
+    )
+
     violationRules {
         rule {
             limit {

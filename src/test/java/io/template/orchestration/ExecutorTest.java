@@ -1,9 +1,9 @@
-package io.template.bootstrap.logic;
+package io.template.orchestration;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.template.bootstrap.exceptions.InvalidInputException;
-import io.template.samplebusinesslayer.logic.Calculator;
-import io.template.shared.models.ApplicationInput;
+import io.template.orchestration.exceptions.InvalidInputException;
+import io.template.orchestration.models.ApplicationInput;
+import io.template.samplebusinesslayer.Calculator;
 import io.template.shared.models.EnvironmentVariables;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

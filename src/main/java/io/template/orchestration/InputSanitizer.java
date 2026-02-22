@@ -1,12 +1,12 @@
-package io.template.bootstrap.logic;
+package io.template.orchestration;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
-import io.template.bootstrap.exceptions.InvalidInputException;
-import io.template.shared.models.ApplicationInput;
+import io.template.orchestration.exceptions.InvalidInputException;
+import io.template.orchestration.models.ApplicationInput;
 import io.template.shared.utilities.HibernateValidatorUtility;
 import io.template.shared.utilities.JsonMapperUtility;
 import jakarta.validation.ConstraintViolation;

@@ -2,7 +2,7 @@ package io.template;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import io.template.bootstrap.logic.Executor;
+import io.template.orchestration.Executor;
 import io.template.shared.models.EnvironmentVariables;
 import org.junit.jupiter.api.Test;
 

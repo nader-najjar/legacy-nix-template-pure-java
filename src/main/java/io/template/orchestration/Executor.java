@@ -1,9 +1,9 @@
-package io.template.bootstrap.logic;
+package io.template.orchestration;
 
 import com.google.inject.Inject;
-import io.template.samplebusinesslayer.logic.Calculator;
+import io.template.orchestration.models.ApplicationInput;
+import io.template.samplebusinesslayer.Calculator;
 import io.template.samplebusinesslayer.models.CalculationRequest;
-import io.template.shared.models.ApplicationInput;
 import io.template.shared.models.EnvironmentVariables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

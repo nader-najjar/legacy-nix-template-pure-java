@@ -1,4 +1,4 @@
-package io.template.bootstrap.exceptions;
+package io.template.orchestration.exceptions;
 
 /**
  * Thrown when a required environment variable is missing or invalid.

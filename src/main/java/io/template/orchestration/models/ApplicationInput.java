@@ -1,4 +1,4 @@
-package io.template.shared.models;
+package io.template.orchestration.models;
 
 import java.time.Instant;
 import java.util.List;

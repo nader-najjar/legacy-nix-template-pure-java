@@ -1,4 +1,4 @@
-package io.template.samplebusinesslayer.logic;
+package io.template.samplebusinesslayer;
 
 import java.util.Locale;
 

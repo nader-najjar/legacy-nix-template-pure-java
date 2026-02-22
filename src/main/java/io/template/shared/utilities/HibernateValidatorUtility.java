@@ -14,4 +14,5 @@ public final class HibernateValidatorUtility {
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         return factory.getValidator();
     }
+
 }

@@ -2,8 +2,8 @@ package io.template;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import io.template.bootstrap.injectionmodules.EnvironmentModule;
-import io.template.bootstrap.logic.Executor;
+import io.template.orchestration.Executor;
+import io.template.orchestration.injectionmodules.EnvironmentModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,22 +21,25 @@ public final class Main {
     private Main() { }
 
     public static void main(String[] args) {
+        LifecycleManager.registerShutdownHook();
+        Injector injector;
+        int exitCode = 0;
+
         try {
-            Injector injector = Guice.createInjector(
+            injector = Guice.createInjector(
                     new EnvironmentModule()
             );
-
-            LifecycleManager.registerShutdownHooks(injector);
-
             Executor executor = injector.getInstance(Executor.class);
             executor.execute(args);
         } catch (Exception exception) {
-            safeCleanup(exception);
-            System.exit(1);
+            LOGGER.error("Technical exception occurred at software entrypoint level: ", exception);
+            exitCode = 1;
+        } finally {
+            // Close any AutoCloseable resources here before the JVM exits.
+            // Resources requiring cleanup should be declared before the try block so they are in scope.
+            LifecycleManager.signalDone();
         }
-    }
 
-    private static void safeCleanup(Exception exception) {
-        LOGGER.error("Technical exception occurred at software entrypoint level: ", exception);
+        System.exit(exitCode);
     }
 }

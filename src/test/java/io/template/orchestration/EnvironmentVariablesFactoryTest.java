@@ -1,8 +1,8 @@
-package io.template.bootstrap.logic;
+package io.template.orchestration;
 
 import java.util.Map;
 
-import io.template.bootstrap.exceptions.EnvironmentVariableException;
+import io.template.orchestration.exceptions.EnvironmentVariableException;
 import io.template.shared.models.EnvironmentVariables;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

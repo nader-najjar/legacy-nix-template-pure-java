@@ -3,7 +3,7 @@ package io.template.testsupport;
 import java.time.Instant;
 import java.util.List;
 
-import io.template.shared.models.ApplicationInput;
+import io.template.orchestration.models.ApplicationInput;
 
 public final class SampleApplicationInputs {
 

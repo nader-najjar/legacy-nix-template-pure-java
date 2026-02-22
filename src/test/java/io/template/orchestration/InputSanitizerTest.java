@@ -1,9 +1,9 @@
-package io.template.bootstrap.logic;
+package io.template.orchestration;
 
 import java.util.Set;
 
-import io.template.bootstrap.exceptions.InvalidInputException;
-import io.template.shared.models.ApplicationInput;
+import io.template.orchestration.exceptions.InvalidInputException;
+import io.template.orchestration.models.ApplicationInput;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -1,10 +1,10 @@
-package io.template.bootstrap.logic;
+package io.template.orchestration;
 
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import io.template.bootstrap.exceptions.EnvironmentVariableException;
+import io.template.orchestration.exceptions.EnvironmentVariableException;
 import io.template.shared.models.EnvironmentVariables;
 import io.template.shared.utilities.HibernateValidatorUtility;
 import jakarta.validation.ConstraintViolation;
@@ -13,7 +13,7 @@ import jakarta.validation.ConstraintViolation;
  * Creates {@link EnvironmentVariables} instances from raw environment maps.
  * <p>
  * This class contains all logic for extracting, parsing and validating
- * environment variables. {@link io.template.bootstrap.injectionmodules.EnvironmentModule}
+ * environment variables. {@link io.template.orchestration.injectionmodules.EnvironmentModule}
  * is intentionally kept thin and delegates to this factory, so the logic
  * can be tested without going through Guice.
  */
