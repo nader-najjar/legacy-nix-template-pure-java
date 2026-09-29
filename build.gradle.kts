@@ -212,7 +212,7 @@ tasks.jacocoTestCoverageVerification {
     val excludes = listOf(
         "io/template/Main.class",
         "io/template/LifecycleManager.class",
-        "io/template/bootstrap/injectionmodules/*"
+        "io/template/orchestration/injectionmodules/*"
     )
     classDirectories.setFrom(
         sourceSets.main.get().output.asFileTree.matching {

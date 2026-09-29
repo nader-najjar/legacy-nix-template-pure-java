@@ -1,5 +1,6 @@
 package io.template.shared.utilities;
 
+import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -19,10 +20,10 @@ public final class JsonMapperUtility {
                 .disable(MapperFeature.AUTO_DETECT_IS_GETTERS)
                 .disable(MapperFeature.AUTO_DETECT_SETTERS)
 
-                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .enable(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES)
                 .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
-                .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
+                .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
 
                 .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
                 .disable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
