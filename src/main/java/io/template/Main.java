@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  * The following classes must not have associated unit tests - smoke tests are used in their place:
  *   - `Main.java`
  *   - `LifecycleManager.java`
- *   - `bootstrap/injectionmodules/*`
+ *   - `orchestration/injectionmodules/*`
  */
 public final class Main {
 
