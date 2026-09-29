@@ -162,12 +162,134 @@ class InputSanitizerTest {
     }
 
     @Test
-    void handlesJsonWithNullStringField() {
+    void rejectsJsonWithNullStringField() {
         String json = VALID_JSON_WITH_NULL_STRING_FIELD;
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("exampleStringField"));
+    }
+
+    @Test
+    void rejectsNullTimestampField() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z")
+                .replace("\"2024-01-01T00:00:00Z\"", "null");
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("exampleTimestampField"));
+    }
+
+    @Test
+    void rejectsNullListField() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z")
+                .replace("\"exampleListField\": []", "\"exampleListField\": null");
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("exampleListField"));
+    }
+
+    @Test
+    void rejectsNullListElement() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z", "a")
+                .replace("\"exampleListField\": [\"a\"]", "\"exampleListField\": [null]");
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("exampleListField"));
+    }
+
+    @Test
+    void rejectsNullPrimitiveField() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z")
+                .replace("\"exampleIntField\": 3", "\"exampleIntField\": null");
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("Invalid input JSON"));
+        assertNotNull(exception.getCause());
+    }
+
+    @Test
+    void rejectsNullBooleanField() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z")
+                .replace("\"exampleBooleanField\": true", "\"exampleBooleanField\": null");
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("Invalid input JSON"));
+        assertNotNull(exception.getCause());
+    }
+
+    @Test
+    void rejectsMissingKnownField() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z")
+                .replace("\"exampleStringField\": \"hello\",", "");
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("Invalid input JSON"));
+        assertNotNull(exception.getCause());
+    }
+
+    @Test
+    void ignoresUnknownField() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z")
+                .replace("\"exampleListField\": []", "\"exampleListField\": [], \"futureField\": 42");
 
         ApplicationInput input = sanitizer.sanitize(new String[]{json});
 
-        assertNotNull(input);
-        // null string field is allowed (no validation constraints)
+        assertEquals("hello", input.exampleStringField());
+    }
+
+    @Test
+    void rejectsDuplicateKnownField() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z")
+                .replace("\"exampleIntField\": 3", "\"exampleIntField\": 3, \"exampleIntField\": 4");
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("Invalid input JSON"));
+        assertNotNull(exception.getCause());
+    }
+
+    @Test
+    void rejectsDuplicateFieldInsideUnknownObject() {
+        String json = validInput("hello", 3, true, "2024-01-01T00:00:00Z")
+                .replace("\"exampleListField\": []",
+                        "\"exampleListField\": [], \"futureField\": {\"nested\": 1, \"nested\": 2}");
+
+        InvalidInputException exception = assertThrows(
+                InvalidInputException.class,
+                () -> sanitizer.sanitize(new String[]{json})
+        );
+
+        assertTrue(exception.getMessage().contains("Invalid input JSON"));
+        assertNotNull(exception.getCause());
     }
 }
