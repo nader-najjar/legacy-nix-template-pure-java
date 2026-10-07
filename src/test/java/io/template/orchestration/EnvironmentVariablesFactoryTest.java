@@ -1,15 +1,25 @@
 package io.template.orchestration;
 
 import java.util.Map;
+import java.util.stream.Stream;
 
 import io.template.orchestration.exceptions.EnvironmentVariableException;
 import io.template.shared.models.EnvironmentVariables;
+import io.template.shared.models.Stage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import software.amazon.awssdk.regions.Region;
 
 import static io.template.testsupport.SampleEnvironmentMaps.validEnvironment;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,13 +33,17 @@ class EnvironmentVariablesFactoryTest {
         environment = validEnvironment();
     }
 
+    static Stream<String> requiredKeys() {
+        return Stream.of("STAGE", "AWS_REGION", "EXAMPLE_STRING_VAR", "EXAMPLE_INT_VAR", "EXAMPLE_BOOLEAN_VAR");
+    }
+
     @Test
     void providesEnvironmentVariablesWithValidValues() {
         EnvironmentVariables result = EnvironmentVariablesFactory.from(environment);
 
         assertNotNull(result);
-        assertEquals("unit", result.stage());
-        assertEquals("unit-region", result.region());
+        assertEquals(Stage.BETA, result.stage());
+        assertEquals(Region.US_EAST_1, result.awsRegion());
         assertEquals("test", result.exampleStringVar());
         assertEquals(1, result.exampleIntVar());
         assertTrue(result.exampleBooleanVar());
@@ -42,98 +56,49 @@ class EnvironmentVariablesFactoryTest {
         EnvironmentVariables result = EnvironmentVariablesFactory.from(environment);
 
         assertFalse(result.exampleBooleanVar());
-        assertEquals("unit", result.stage());
+        assertEquals(Stage.BETA, result.stage());
         assertEquals(1, result.exampleIntVar());
     }
 
-    @Test
-    void throwsExceptionWhenStageIsMissing() {
-        environment.remove("STAGE");
+    @ParameterizedTest
+    @MethodSource("requiredKeys")
+    void throwsExceptionWhenVariableIsMissing(String key) {
+        environment.remove(key);
 
         EnvironmentVariableException exception = assertThrows(
                 EnvironmentVariableException.class,
                 () -> EnvironmentVariablesFactory.from(environment)
         );
 
-        assertTrue(exception.getMessage().contains("STAGE"));
+        assertTrue(exception.getMessage().contains(key));
         assertTrue(exception.getMessage().contains("not set"));
     }
 
-    @Test
-    void throwsExceptionWhenRegionIsMissing() {
-        environment.remove("REGION");
+    @ParameterizedTest
+    @MethodSource("requiredKeys")
+    void throwsExceptionWhenVariableIsBlank(String key) {
+        environment.put(key, "");
 
         EnvironmentVariableException exception = assertThrows(
                 EnvironmentVariableException.class,
                 () -> EnvironmentVariablesFactory.from(environment)
         );
 
-        assertTrue(exception.getMessage().contains("REGION"));
+        assertTrue(exception.getMessage().contains(key));
         assertTrue(exception.getMessage().contains("not set"));
     }
 
-    @Test
-    void throwsExceptionWhenExampleStringVarIsMissing() {
-        environment.remove("EXAMPLE_STRING_VAR");
+    @ParameterizedTest
+    @MethodSource("requiredKeys")
+    void throwsExceptionWhenVariableIsWhitespace(String key) {
+        environment.put(key, "   ");
 
         EnvironmentVariableException exception = assertThrows(
                 EnvironmentVariableException.class,
                 () -> EnvironmentVariablesFactory.from(environment)
         );
 
-        assertTrue(exception.getMessage().contains("EXAMPLE_STRING_VAR"));
-        assertTrue(exception.getMessage().contains("not set"));
-    }
-
-    @Test
-    void throwsExceptionWhenExampleIntVarIsMissing() {
-        environment.remove("EXAMPLE_INT_VAR");
-
-        EnvironmentVariableException exception = assertThrows(
-                EnvironmentVariableException.class,
-                () -> EnvironmentVariablesFactory.from(environment)
-        );
-
-        assertTrue(exception.getMessage().contains("EXAMPLE_INT_VAR"));
-        assertTrue(exception.getMessage().contains("not set"));
-    }
-
-    @Test
-    void throwsExceptionWhenExampleBooleanVarIsMissing() {
-        environment.remove("EXAMPLE_BOOLEAN_VAR");
-
-        EnvironmentVariableException exception = assertThrows(
-                EnvironmentVariableException.class,
-                () -> EnvironmentVariablesFactory.from(environment)
-        );
-
-        assertTrue(exception.getMessage().contains("EXAMPLE_BOOLEAN_VAR"));
-        assertTrue(exception.getMessage().contains("not set"));
-    }
-
-    @Test
-    void throwsExceptionWhenVariableIsBlank() {
-        environment.put("STAGE", "");
-
-        EnvironmentVariableException exception = assertThrows(
-                EnvironmentVariableException.class,
-                () -> EnvironmentVariablesFactory.from(environment)
-        );
-
-        assertTrue(exception.getMessage().contains("STAGE"));
-        assertTrue(exception.getMessage().contains("not set"));
-    }
-
-    @Test
-    void throwsExceptionWhenVariableIsWhitespace() {
-        environment.put("STAGE", "   ");
-
-        EnvironmentVariableException exception = assertThrows(
-                EnvironmentVariableException.class,
-                () -> EnvironmentVariablesFactory.from(environment)
-        );
-
-        assertTrue(exception.getMessage().contains("STAGE"));
+        assertTrue(exception.getMessage().contains(key));
         assertTrue(exception.getMessage().contains("not set"));
     }
 
@@ -243,6 +208,81 @@ class EnvironmentVariablesFactoryTest {
         EnvironmentVariables result = EnvironmentVariablesFactory.from(environment);
 
         assertEquals(Integer.MAX_VALUE, result.exampleIntVar());
+    }
+
+    @ParameterizedTest
+    @EnumSource(Stage.class)
+    void providesEnvironmentVariablesWithEachStage(Stage stage) {
+        environment.put("STAGE", stage.name());
+
+        EnvironmentVariables result = EnvironmentVariablesFactory.from(environment);
+
+        assertEquals(stage, result.stage());
+    }
+
+    static Stream<Region> awsRegions() {
+        return Region.regions().stream();
+    }
+
+    @ParameterizedTest
+    @MethodSource("awsRegions")
+    void providesEnvironmentVariablesWithEachAwsRegion(Region awsRegion) {
+        environment.put("AWS_REGION", awsRegion.id());
+
+        EnvironmentVariables result = EnvironmentVariablesFactory.from(environment);
+
+        assertEquals(awsRegion, result.awsRegion());
+    }
+
+    @Test
+    void throwsExceptionWhenAwsRegionIsWellFormedButUnknownEvenThoughRegionOfAcceptsAnyId() {
+        String unknownRegionId = "us-fake-1";
+        assertDoesNotThrow(() -> Region.of(unknownRegionId));
+        environment.put("AWS_REGION", unknownRegionId);
+
+        EnvironmentVariableException exception = assertThrows(
+                EnvironmentVariableException.class,
+                () -> EnvironmentVariablesFactory.from(environment)
+        );
+
+        assertTrue(exception.getMessage().contains("AWS_REGION"));
+        assertTrue(exception.getMessage().contains("must be one of"));
+        assertTrue(exception.getMessage().contains("got: " + unknownRegionId));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"US-EAST-1", "US_EAST_1", " us-east-1", "us-east-1 "})
+    void throwsExceptionWhenAwsRegionIsNotAnExactRegionId(String value) {
+        environment.put("AWS_REGION", value);
+
+        EnvironmentVariableException exception = assertThrows(
+                EnvironmentVariableException.class,
+                () -> EnvironmentVariablesFactory.from(environment)
+        );
+
+        assertTrue(exception.getMessage().contains("AWS_REGION"));
+        assertTrue(exception.getMessage().contains("must be one of"));
+        assertTrue(exception.getMessage().contains("got: " + value));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "STAGE, dev",
+        "STAGE, Production",
+        "STAGE, ' PRODUCTION'"
+    })
+    void throwsExceptionWhenEnumValueIsNotAnExactConstantName(String key, String value) {
+        environment.put(key, value);
+
+        EnvironmentVariableException exception = assertThrows(
+                EnvironmentVariableException.class,
+                () -> EnvironmentVariablesFactory.from(environment)
+        );
+
+        assertTrue(exception.getMessage().contains(key));
+        assertTrue(exception.getMessage().contains("must be one of"));
+        assertTrue(exception.getMessage().contains("got: " + value));
+        assertInstanceOf(IllegalArgumentException.class, exception.getCause());
     }
 
     // Singleton behavior is a Guice concern and is not tested here.

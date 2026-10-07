@@ -2,11 +2,6 @@ import com.github.spotbugs.snom.Confidence
 import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.SpotBugsTask
 import org.gradle.api.tasks.Exec
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.external.javadoc.JavadocMemberLevel
-import org.gradle.external.javadoc.StandardJavadocDocletOptions
-import org.gradle.process.CommandLineArgumentProvider
 
 plugins {
     id("java")
@@ -31,15 +26,16 @@ jacoco {
 
 checkstyle {
     toolVersion = "10.17.0"
-    configFile = file("$projectDir/checkstyle-configuration.xml")
+    configFile = file("checkstyle-configuration.xml")
     isIgnoreFailures = false
 }
 
 spotbugs {
     toolVersion.set("4.9.8")
+    ignoreFailures.set(false)
     effort.set(Effort.MAX)
     reportLevel.set(Confidence.LOW)
-    excludeFilter.set(file("$projectDir/spotbugs-configuration.xml"))
+    excludeFilter.set(file("spotbugs-configuration.xml"))
 }
 
 repositories {
@@ -71,6 +67,10 @@ dependencies {
     // JSON `serde`
     implementation("com.fasterxml.jackson.core:jackson-databind:2.20.1")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.20.1")
+
+    // AWS SDK
+    implementation(platform("software.amazon.awssdk:bom:2.55.11"))
+    implementation("software.amazon.awssdk:regions")
 
     // Validators
     implementation(platform("org.hibernate.validator:hibernate-validator-bom:9.1.0.Final"))
@@ -212,7 +212,7 @@ tasks.jacocoTestCoverageVerification {
     val excludes = listOf(
         "io/template/Main.class",
         "io/template/LifecycleManager.class",
-        "io/template/bootstrap/injectionmodules/*"
+        "io/template/orchestration/injectionmodules/*"
     )
     classDirectories.setFrom(
         sourceSets.main.get().output.asFileTree.matching {

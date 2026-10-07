@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * Application input model.
@@ -19,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public record ApplicationInput(
 
         @JsonProperty("exampleStringField")
+        @NotNull
         String exampleStringField,
 
         @JsonProperty("exampleIntField")
@@ -28,9 +30,11 @@ public record ApplicationInput(
         boolean exampleBooleanField,
 
         @JsonProperty("exampleTimestampField")
+        @NotNull
         Instant exampleTimestampField,
 
         @JsonProperty("exampleListField")
+        @NotNull
         List<String> exampleListField
 
 ) { }

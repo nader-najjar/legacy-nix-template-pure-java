@@ -5,8 +5,10 @@ import io.template.orchestration.models.ApplicationInput;
 import io.template.samplebusinesslayer.Calculator;
 import io.template.samplebusinesslayer.models.CalculationRequest;
 import io.template.shared.models.EnvironmentVariables;
+import io.template.shared.models.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.regions.Region;
 
 /**
  * Main business logic executor.
@@ -27,9 +29,9 @@ public class Executor {
     }
 
     public void execute(String[] args) {
-        String stage = environmentVariables.stage();
-        String region = environmentVariables.region();
-        LOGGER.info("Executing with stage: {}, region: {}", stage, region);
+        Stage stage = environmentVariables.stage();
+        Region awsRegion = environmentVariables.awsRegion();
+        LOGGER.info("Executing with stage: {}, awsRegion: {}", stage, awsRegion);
 
         ApplicationInput input = inputSanitizer.sanitize(args);
         LOGGER.info("Sanitized input: {}", input);

@@ -1,17 +1,19 @@
 package io.template.shared.models;
 
+import software.amazon.awssdk.regions.Region;
+
 /**
  * Environment variables configuration.
  *
- * @param stage Deployment stage (e.g., dev, staging, prod)
- * @param region Deployment region (e.g., us-west-2, us-east-1)
+ * @param stage Deployment stage
+ * @param awsRegion Deployment region
  * @param exampleStringVar Example string environment variable
  * @param exampleIntVar Example integer environment variable
  * @param exampleBooleanVar Example boolean environment variable
  */
 public record EnvironmentVariables(
-        String stage,
-        String region,
+        Stage stage,
+        Region awsRegion,
         String exampleStringVar,
         int exampleIntVar,
         boolean exampleBooleanVar

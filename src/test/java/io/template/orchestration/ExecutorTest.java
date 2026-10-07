@@ -5,12 +5,14 @@ import io.template.orchestration.exceptions.InvalidInputException;
 import io.template.orchestration.models.ApplicationInput;
 import io.template.samplebusinesslayer.Calculator;
 import io.template.shared.models.EnvironmentVariables;
+import io.template.shared.models.Stage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.regions.Region;
 
 import static io.template.testsupport.SampleApplicationInputs.exampleApplicationInput;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -36,8 +38,8 @@ class ExecutorTest {
 
     @BeforeEach
     void setUp() {
-        when(environmentVariables.stage()).thenReturn("test");
-        when(environmentVariables.region()).thenReturn("us-east-1");
+        when(environmentVariables.stage()).thenReturn(Stage.BETA);
+        when(environmentVariables.awsRegion()).thenReturn(Region.US_EAST_1);
 
         executor = new Executor(environmentVariables, inputSanitizer, calculator);
     }
@@ -53,7 +55,7 @@ class ExecutorTest {
 
         // Verify environment variables are accessed
         verify(environmentVariables).stage();
-        verify(environmentVariables).region();
+        verify(environmentVariables).awsRegion();
 
         // Verify input sanitization
         verify(inputSanitizer).sanitize(args);
@@ -82,7 +84,7 @@ class ExecutorTest {
         // Verify the order of operations
         InOrder inOrder = inOrder(environmentVariables, inputSanitizer, calculator);
         inOrder.verify(environmentVariables).stage();
-        inOrder.verify(environmentVariables).region();
+        inOrder.verify(environmentVariables).awsRegion();
         inOrder.verify(inputSanitizer).sanitize(args);
         inOrder.verify(calculator).calculate(argThat(request ->
                 request.operandA() == 10.0 &&
@@ -105,7 +107,7 @@ class ExecutorTest {
 
         // Verify environment variables are still accessed (logging happens before sanitization)
         verify(environmentVariables).stage();
-        verify(environmentVariables).region();
+        verify(environmentVariables).awsRegion();
         verify(inputSanitizer).sanitize(args);
         // Verify calculator is never called when sanitization fails
         verify(calculator, never()).calculate(argThat(request -> true));
