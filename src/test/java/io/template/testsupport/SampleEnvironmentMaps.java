@@ -10,8 +10,8 @@ public final class SampleEnvironmentMaps {
 
     public static Map<String, String> validEnvironment() {
         Map<String, String> environment = new HashMap<>();
-        environment.put("STAGE", "unit");
-        environment.put("REGION", "unit-region");
+        environment.put("STAGE", "BETA");
+        environment.put("AWS_REGION", "us-east-1");
         environment.put("EXAMPLE_STRING_VAR", "test");
         environment.put("EXAMPLE_INT_VAR", "1");
         environment.put("EXAMPLE_BOOLEAN_VAR", "true");

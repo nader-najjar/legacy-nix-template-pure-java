@@ -20,6 +20,13 @@ public class InputSanitizer {
     @Inject
     public InputSanitizer() { }
 
+    /**
+     * Parses and validates raw input arguments.
+     *
+     * @param args raw input arguments
+     * @return parsed and validated ApplicationInput
+     * @throws InvalidInputException if input is missing or invalid
+     */
     public ApplicationInput sanitize(String[] args) {
         validateArgumentsStructure(args);
         String jsonString = args[0];

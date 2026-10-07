@@ -1,13 +1,16 @@
 package io.template.orchestration;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.template.orchestration.exceptions.EnvironmentVariableException;
 import io.template.shared.models.EnvironmentVariables;
+import io.template.shared.models.Stage;
 import io.template.shared.utilities.HibernateValidatorUtility;
 import jakarta.validation.ConstraintViolation;
+import software.amazon.awssdk.regions.Region;
 
 /**
  * Creates {@link EnvironmentVariables} instances from raw environment maps.
@@ -17,14 +20,14 @@ import jakarta.validation.ConstraintViolation;
  * is intentionally kept thin and delegates to this factory, so the logic
  * can be tested without going through Guice.
  */
-public class EnvironmentVariablesFactory {
+public final class EnvironmentVariablesFactory {
 
     private EnvironmentVariablesFactory() { }
 
     public static EnvironmentVariables from(Map<String, String> environment) {
         EnvironmentVariables environmentVariables = new EnvironmentVariables(
-                extractString(environment, "STAGE"),
-                extractString(environment, "REGION"),
+                extractEnum(environment, "STAGE", Stage.class),
+                extractAwsRegion(environment, "AWS_REGION"),
                 extractString(environment, "EXAMPLE_STRING_VAR"),
                 extractInt(environment, "EXAMPLE_INT_VAR"),
                 extractBoolean(environment, "EXAMPLE_BOOLEAN_VAR")
@@ -73,6 +76,32 @@ public class EnvironmentVariablesFactory {
         return customParseBoolean(key, value);
     }
 
+    private static <E extends Enum<E>> E extractEnum(Map<String, String> environment, String key, Class<E> type) {
+        String value = environment.get(key);
+        ensureVariableExists(key, value);
+
+        try {
+            return Enum.valueOf(type, value);
+        } catch (IllegalArgumentException e) {
+            String allowedValues = Arrays.toString(type.getEnumConstants());
+            String message = "Environment variable '" + key + "' must be one of " + allowedValues + ", got: " + value;
+            throw new EnvironmentVariableException(message, e);
+        }
+    }
+
+    private static Region extractAwsRegion(Map<String, String> environment, String key) {
+        String value = environment.get(key);
+        ensureVariableExists(key, value);
+
+        Region region = Region.of(value);
+        if (!Region.regions().contains(region)) {
+            String allowedValues = Region.regions().toString();
+            String message = "Environment variable '" + key + "' must be one of " + allowedValues + ", got: " + value;
+            throw new EnvironmentVariableException(message);
+        }
+        return region;
+    }
+
     private static void ensureVariableExists(String key, String value) {
         if (value == null || value.isBlank()) {
             throw new EnvironmentVariableException("Required environment variable '" + key + "' is not set");
@@ -96,4 +125,3 @@ public class EnvironmentVariablesFactory {
         throw new EnvironmentVariableException(message);
     }
 }
-

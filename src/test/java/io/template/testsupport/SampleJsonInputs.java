@@ -64,7 +64,7 @@ public final class SampleJsonInputs {
             }
             """;
 
-    public static final String VALID_JSON_WITH_NULL_STRING_FIELD = """
+    public static final String INVALID_JSON_WITH_NULL_STRING_FIELD = """
             {
               "exampleStringField": null,
               "exampleIntField": 3,
