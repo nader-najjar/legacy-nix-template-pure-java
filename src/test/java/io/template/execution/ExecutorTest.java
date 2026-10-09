@@ -1,11 +1,14 @@
-package io.template.orchestration;
+package io.template.execution;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.template.orchestration.exceptions.InvalidInputException;
-import io.template.orchestration.models.ApplicationInput;
+import io.template.environment.models.EnvironmentVariables;
+import io.template.environment.models.Stage;
+import io.template.execution.exceptions.InvalidInputException;
+import io.template.execution.models.ApplicationInput;
+import io.template.samplebusinesslayer.CalculationResultStore;
 import io.template.samplebusinesslayer.Calculator;
-import io.template.shared.models.EnvironmentVariables;
-import io.template.shared.models.Stage;
+import io.template.samplebusinesslayer.models.CalculationRequest;
+import io.template.samplebusinesslayer.models.CalculationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +19,7 @@ import software.amazon.awssdk.regions.Region;
 
 import static io.template.testsupport.SampleApplicationInputs.exampleApplicationInput;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -32,6 +36,9 @@ class ExecutorTest {
     private Calculator calculator;
 
     @Mock
+    private CalculationResultStore calculationResultStore;
+
+    @Mock
     private EnvironmentVariables environmentVariables;
 
     private Executor executor;
@@ -41,7 +48,7 @@ class ExecutorTest {
         when(environmentVariables.stage()).thenReturn(Stage.BETA);
         when(environmentVariables.awsRegion()).thenReturn(Region.US_EAST_1);
 
-        executor = new Executor(environmentVariables, inputSanitizer, calculator);
+        executor = new Executor(environmentVariables, inputSanitizer, calculator, calculationResultStore);
     }
 
     @Test
@@ -49,7 +56,10 @@ class ExecutorTest {
         String[] args = new String[]{"opaque-input"};
         ApplicationInput mockInput = exampleApplicationInput();
 
+        CalculationResult calculationResult = new CalculationResult(15.0, "ADD");
+
         when(inputSanitizer.sanitize(args)).thenReturn(mockInput);
+        when(calculator.calculate(any(CalculationRequest.class))).thenReturn(calculationResult);
 
         executor.execute(args);
 
@@ -66,6 +76,8 @@ class ExecutorTest {
                 request.operandB() == 5.0 &&
                 "ADD".equals(request.operation())
         ));
+
+        verify(calculationResultStore).save(new CalculationRequest(10.0, 5.0, "ADD"), calculationResult);
     }
 
     @SuppressFBWarnings(
@@ -77,12 +89,15 @@ class ExecutorTest {
         String[] args = new String[]{"opaque-input"};
         ApplicationInput mockInput = exampleApplicationInput();
 
+        CalculationResult calculationResult = new CalculationResult(15.0, "ADD");
+
         when(inputSanitizer.sanitize(args)).thenReturn(mockInput);
+        when(calculator.calculate(any(CalculationRequest.class))).thenReturn(calculationResult);
 
         executor.execute(args);
 
         // Verify the order of operations
-        InOrder inOrder = inOrder(environmentVariables, inputSanitizer, calculator);
+        InOrder inOrder = inOrder(environmentVariables, inputSanitizer, calculator, calculationResultStore);
         inOrder.verify(environmentVariables).stage();
         inOrder.verify(environmentVariables).awsRegion();
         inOrder.verify(inputSanitizer).sanitize(args);
@@ -91,6 +106,7 @@ class ExecutorTest {
                 request.operandB() == 5.0 &&
                 "ADD".equals(request.operation())
         ));
+        inOrder.verify(calculationResultStore).save(new CalculationRequest(10.0, 5.0, "ADD"), calculationResult);
     }
 
     @Test
@@ -110,6 +126,7 @@ class ExecutorTest {
         verify(environmentVariables).awsRegion();
         verify(inputSanitizer).sanitize(args);
         // Verify calculator is never called when sanitization fails
-        verify(calculator, never()).calculate(argThat(request -> true));
+        verify(calculator, never()).calculate(any(CalculationRequest.class));
+        verify(calculationResultStore, never()).save(any(CalculationRequest.class), any(CalculationResult.class));
     }
 }

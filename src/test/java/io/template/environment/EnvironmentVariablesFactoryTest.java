@@ -1,11 +1,11 @@
-package io.template.orchestration;
+package io.template.environment;
 
 import java.util.Map;
 import java.util.stream.Stream;
 
-import io.template.orchestration.exceptions.EnvironmentVariableException;
-import io.template.shared.models.EnvironmentVariables;
-import io.template.shared.models.Stage;
+import io.template.environment.exceptions.EnvironmentVariableException;
+import io.template.environment.models.EnvironmentVariables;
+import io.template.environment.models.Stage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -34,7 +34,14 @@ class EnvironmentVariablesFactoryTest {
     }
 
     static Stream<String> requiredKeys() {
-        return Stream.of("STAGE", "AWS_REGION", "EXAMPLE_STRING_VAR", "EXAMPLE_INT_VAR", "EXAMPLE_BOOLEAN_VAR");
+        return Stream.of(
+                "STAGE",
+                "AWS_REGION",
+                "CALCULATION_RESULTS_TABLE_NAME",
+                "EXAMPLE_STRING_VAR",
+                "EXAMPLE_INT_VAR",
+                "EXAMPLE_BOOLEAN_VAR"
+        );
     }
 
     @Test
@@ -44,6 +51,7 @@ class EnvironmentVariablesFactoryTest {
         assertNotNull(result);
         assertEquals(Stage.BETA, result.stage());
         assertEquals(Region.US_EAST_1, result.awsRegion());
+        assertEquals("CalculationResults", result.calculationResultsTableName());
         assertEquals("test", result.exampleStringVar());
         assertEquals(1, result.exampleIntVar());
         assertTrue(result.exampleBooleanVar());
@@ -226,7 +234,7 @@ class EnvironmentVariablesFactoryTest {
 
     @ParameterizedTest
     @MethodSource("awsRegions")
-    void providesEnvironmentVariablesWithEachAwsRegion(Region awsRegion) {
+    void providesEnvironmentVariablesWithEachAWSRegion(Region awsRegion) {
         environment.put("AWS_REGION", awsRegion.id());
 
         EnvironmentVariables result = EnvironmentVariablesFactory.from(environment);
@@ -235,7 +243,7 @@ class EnvironmentVariablesFactoryTest {
     }
 
     @Test
-    void throwsExceptionWhenAwsRegionIsWellFormedButUnknownEvenThoughRegionOfAcceptsAnyId() {
+    void throwsExceptionWhenAWSRegionIsWellFormedButUnknownEvenThoughRegionOfAcceptsAnyId() {
         String unknownRegionId = "us-fake-1";
         assertDoesNotThrow(() -> Region.of(unknownRegionId));
         environment.put("AWS_REGION", unknownRegionId);
@@ -252,7 +260,7 @@ class EnvironmentVariablesFactoryTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"US-EAST-1", "US_EAST_1", " us-east-1", "us-east-1 "})
-    void throwsExceptionWhenAwsRegionIsNotAnExactRegionId(String value) {
+    void throwsExceptionWhenAWSRegionIsNotAnExactRegionId(String value) {
         environment.put("AWS_REGION", value);
 
         EnvironmentVariableException exception = assertThrows(

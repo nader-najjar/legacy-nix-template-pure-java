@@ -1,4 +1,4 @@
-package io.template.orchestration.exceptions;
+package io.template.execution.exceptions;
 
 /**
  * Thrown when input validation or parsing fails.

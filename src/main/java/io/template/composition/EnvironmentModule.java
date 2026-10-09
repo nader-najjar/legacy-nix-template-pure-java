@@ -1,10 +1,10 @@
-package io.template.orchestration.injectionmodules;
+package io.template.composition;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import io.template.orchestration.EnvironmentVariablesFactory;
-import io.template.shared.models.EnvironmentVariables;
+import io.template.environment.EnvironmentVariablesFactory;
+import io.template.environment.models.EnvironmentVariables;
 
 public class EnvironmentModule extends AbstractModule {
 

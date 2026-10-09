@@ -58,7 +58,7 @@ RUN mkdir -p ${SOFTWARE_DIRECTORY}/runtime-workspace && \
 #         - Delegates to the Gradle-generated launch script
 #
 
-COPY build/install/template-pure-java ${SOFTWARE_DIRECTORY}/runtime-workspace/application
+COPY build/install/template-pure-java ${SOFTWARE_DIRECTORY}/runtime-workspace/executable
 
 RUN printf '%s\n' \
   '#!/usr/bin/env bash' \
@@ -66,7 +66,7 @@ RUN printf '%s\n' \
   'set -a' \
   ". ${SOFTWARE_DIRECTORY}/runtime-workspace/nix-env.sh" \
   'set +a' \
-  "exec ${SOFTWARE_DIRECTORY}/runtime-workspace/application/bin/template-pure-java \"\$@\"" \
+  "exec ${SOFTWARE_DIRECTORY}/runtime-workspace/executable/bin/template-pure-java \"\$@\"" \
   > ${SOFTWARE_DIRECTORY}/runtime-workspace/run-application && \
   chmod +x ${SOFTWARE_DIRECTORY}/runtime-workspace/run-application
 
