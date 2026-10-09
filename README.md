@@ -31,6 +31,7 @@ Java best practices.
 * Runs SpotBugs
 * Builds a container image with Podman, set to run the code entrypoint (tagged `<project-name>:latest`)
 * Saves the image as `build/container-image.tar`
+* Builds a Lambda deployment package as `build/lambda-deployment-package.zip`
 
 ### `./universal-build clean`
 
@@ -88,7 +89,64 @@ Java best practices.
 
 &nbsp;
 
-## 5. IDE Setup
+## 5. Shutdown
+
+Shutdown pattern (implemented in `Main`):
+
+1. SIGTERM (or SIGINT/SIGHUP) fires the shutdown hook, which interrupts the main thread and waits up to `SHUTDOWN_GRACE_PERIOD_SECONDS` seconds for main to finish. Keep that grace period below the platform's SIGTERM-to-SIGKILL timeout (ECS and Kubernetes default to 30s)
+2. Main clears the interrupt, performs all resource cleanup in its own `finally` block, then releases the hook
+3. The JVM exits after the hook thread returns. On a normal exit the hook returns at once. After a signal the process exits with 128 + the signal number (143 for SIGTERM) regardless of main's exit code
+
+Work must respond to that interrupt:
+
+* The interrupt aborts interruptible waits (sleep, queue and latch waits, `Future.get`, SDK retry backoff) by throwing an exception, which should propagate up to `Main`
+* Classic `java.net` socket I/O, `synchronized` and `Lock.lock()` ignore the interrupt, so a call already in flight runs until it returns or times out; normal calls finish well within `SHUTDOWN_GRACE_PERIOD_SECONDS`
+* Never swallow `InterruptedException`: declare it, or call `Thread.currentThread().interrupt()` and rethrow it wrapped
+* Only `Main` calls `System.exit`; elsewhere throw so the exception reaches `Main`
+* CPU-bound loops check `Thread.currentThread().isInterrupted()` between iterations
+* Work on other threads is not interrupted; main must stop it in its `finally` block
+
+Correctness is guaranteed by idempotency: dying at any point (including SIGKILL, which bypasses hooks entirely) leaves the system in a consistent state. Graceful shutdown only improves efficiency - it is never required for correctness.
+
+&nbsp;
+
+## 6. Outputs
+
+The template currently supports two deployment paths: an OCI/container image through `Main`, and AWS Lambda through `LambdaHandler`. Keep only the path your application uses and remove the other using the instructions below. Both paths share the execution and business logic. The AWS integrations are examples; the template can also support other cloud providers.
+
+### OCI / Container (`Main`)
+
+* For a container, ECS task, EC2 host or command-line run; the container image runs it
+
+To keep only Lambda, remove:
+
+* `src/main/java/io/template/Main.java` and its JaCoCo exclude in `build.gradle.kts`
+* The Shutdown section above and `closeResources` in `composition/AWSClientsModule.java`, including its unused `Injector` import
+* `containerImageName`, `podmanBuildImage`, `podmanSaveImageTar`, and `executeContainerImageSmokeTest` in `build.gradle.kts`; remove only the `podmanSaveImageTar` dependency from `build`, keeping the Lambda package dependency
+* The `application` plugin declaration and `application { ... }` configuration in `build.gradle.kts`; keep the `java` plugin for compilation and JAR packaging
+* `Dockerfile`, `.dockerignore`, and the container output bullets under Main Build Tasks
+
+### AWS Lambda (`LambdaHandler`)
+
+* Handler: `io.template.LambdaHandler::handleRequest`, on the `java25` runtime
+* The event JSON reaches `Executor` as its single input argument
+* `buildLambdaDeploymentPackage` (run by `build`) zips the application jar and every runtime classpath jar into the zip's `lib/`, which the Lambda Java runtime puts on the classpath
+* Deploy the zip with the infrastructure tool of your choice, for example CDK's `lambda.Code.fromAsset("build/lambda-deployment-package.zip")`
+* The Shutdown section does not apply: Lambda freezes and later discards the execution environment without signaling the process, so clients live for the environment's lifetime
+
+To keep only OCI/container deployment, remove:
+
+* `src/main/java/io/template/LambdaHandler.java` and its JaCoCo exclude in `build.gradle.kts`
+* `buildLambdaDeploymentPackage` and only its dependency in the `build` task, keeping the container build dependency
+* The `aws-lambda-java-core` dependency and the Lambda output bullet under Main Build Tasks
+
+After removing a deployment path, update this Outputs section and regenerate the Gradle lockfile using the workflow above. Keep the shared environment, execution, Guice modules, and DynamoDB sample unless you also choose to remove that sample.
+
+* Reference: <https://docs.aws.amazon.com/lambda/latest/dg/java-package.html>
+
+&nbsp;
+
+## 7. IDE Setup
 
 ### IntelliJ IDEA Ultimate
 
@@ -102,7 +160,7 @@ Follow the instructions here: <https://nader-najjar.notion.site/Visual-Studio-Co
 
 &nbsp;
 
-## 6. References
+## 8. References
 
 ### Nix
 

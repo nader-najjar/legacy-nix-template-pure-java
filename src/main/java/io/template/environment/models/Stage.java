@@ -1,4 +1,4 @@
-package io.template.shared.models;
+package io.template.environment.models;
 
 /**
  * Deployment stage.

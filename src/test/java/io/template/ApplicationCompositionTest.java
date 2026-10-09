@@ -2,9 +2,12 @@ package io.template;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import io.template.orchestration.Executor;
-import io.template.shared.models.EnvironmentVariables;
+import com.google.inject.Stage;
+import io.template.composition.StrictGuiceModule;
+import io.template.environment.models.EnvironmentVariables;
+import io.template.execution.Executor;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.mock;
@@ -43,6 +46,8 @@ class ApplicationCompositionTest {
      * KinesisClient kinesisClient = mock(KinesisClient.class);
      *
      * Injector injector = Guice.createInjector(
+     *         Stage.PRODUCTION,
+     *         new StrictGuiceModule(),
      *         binder -> {
      *             binder.bind(EnvironmentVariables.class).toInstance(envVars)
      *             binder.bind(StorageClient.class).toInstance(storageClient);
@@ -57,9 +62,15 @@ class ApplicationCompositionTest {
     void assemblesApplication() {
         assertDoesNotThrow(() -> {
             EnvironmentVariables envVars = mock(EnvironmentVariables.class);
+            DynamoDbClient dynamoDBClient = mock(DynamoDbClient.class);
 
             Injector injector = Guice.createInjector(
-                    binder -> binder.bind(EnvironmentVariables.class).toInstance(envVars)
+                    Stage.PRODUCTION,
+                    new StrictGuiceModule(),
+                    binder -> {
+                        binder.bind(EnvironmentVariables.class).toInstance(envVars);
+                        binder.bind(DynamoDbClient.class).toInstance(dynamoDBClient);
+                    }
             );
 
             injector.getInstance(Executor.class);

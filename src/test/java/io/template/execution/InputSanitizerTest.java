@@ -1,4 +1,4 @@
-package io.template.orchestration;
+package io.template.execution;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import io.template.orchestration.exceptions.InvalidInputException;
-import io.template.orchestration.models.ApplicationInput;
+import io.template.execution.exceptions.InvalidInputException;
+import io.template.execution.models.ApplicationInput;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
