@@ -47,7 +47,6 @@ dependencyLocking {
 
 application {
     mainClass.set("io.template.Main")
-    applicationDefaultJvmArgs = listOf("-XX:MaxRAMPercentage=75.0")
 }
 
 dependencies {
@@ -74,6 +73,7 @@ dependencies {
 
     // AWS Lambda
     implementation("com.amazonaws:aws-lambda-java-core:1.4.0")
+    runtimeOnly("com.amazonaws:aws-lambda-java-runtime-interface-client:2.8.3")
 
     // Validators
     implementation(platform("org.hibernate.validator:hibernate-validator-bom:9.1.0.Final"))
@@ -109,11 +109,6 @@ tasks.named<Delete>("clean") {
  *     - The image is tagged "${rootProject.name}:latest"
  *     - The image is saved as a tarball to build/container-image.tar
  *     - Any following steps (i.e. pushing the image to ECR, injecting the tarball to a host, etc) is up to the CI/CD pipeline definition, not the build system
- *
- * 2. Lambda Deployment Package Build
- *     - Zips the application jar and its runtime classpath into lib/, the layout the Lambda Java runtime puts on the classpath
- *     - The zip is saved to build/lambda-deployment-package.zip
- *     - Any following steps (i.e. uploading the zip to S3 for a Lambda function) is up to the CI/CD pipeline definition, not the build system
  */
 
 val containerImageName = "${rootProject.name}:latest"
@@ -132,21 +127,8 @@ tasks.register<Exec>("podmanSaveImageTar") {
     commandLine("podman", "save", "-o", "build/container-image.tar", containerImageName)
 }
 
-tasks.register<Zip>("buildLambdaDeploymentPackage") {
-    group = "lambda"
-    description = "Builds the Lambda deployment package build/lambda-deployment-package.zip"
-    archiveFileName.set("lambda-deployment-package.zip")
-    destinationDirectory.set(layout.buildDirectory)
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-    into("lib") {
-        from(tasks.jar)
-        from(configurations.runtimeClasspath)
-    }
-}
-
 tasks.named("build") {
-    dependsOn(tasks.named("podmanSaveImageTar"), tasks.named("buildLambdaDeploymentPackage"))
+    dependsOn(tasks.named("podmanSaveImageTar"))
 }
 
 /**

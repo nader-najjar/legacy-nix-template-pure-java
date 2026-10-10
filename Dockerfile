@@ -9,7 +9,6 @@ FROM ubuntu:22.04@sha256:104ae83764a5119017b8e8d6218fa0832b09df65aae7d5a6de29a85
 
 ENV OS_USER=customuser
 ENV OS_USER_GROUP=custom
-ENV SOFTWARE_DIRECTORY=/custom-software
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -21,11 +20,11 @@ RUN apt-get update && \
       sudo && \
     rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p "${SOFTWARE_DIRECTORY}"
+RUN mkdir -p "/custom-software"
 
 RUN groupadd -r "${OS_USER_GROUP}" && useradd -m -r -g "${OS_USER_GROUP}" "${OS_USER}" && \
     echo "${OS_USER} ALL=(root) NOPASSWD: ALL" > "/etc/sudoers.d/${OS_USER}" && chmod 440 "/etc/sudoers.d/${OS_USER}" && \
-    chown "${OS_USER}":"${OS_USER_GROUP}" "${SOFTWARE_DIRECTORY}"
+    chown "${OS_USER}":"${OS_USER_GROUP}" "/custom-software"
 
 USER ${OS_USER}
 
@@ -45,30 +44,32 @@ ENV NIX_CONFIG="experimental-features = nix-command flakes"
 #     - This is for security reasons and for minimizing runtime complexity
 #
 
-COPY flake.nix flake.lock ${SOFTWARE_DIRECTORY}/buildtime-workspace/
+COPY flake.nix flake.lock /custom-software/buildtime-workspace/
 
-RUN mkdir -p ${SOFTWARE_DIRECTORY}/runtime-workspace && \
-    nix print-dev-env ${SOFTWARE_DIRECTORY}/buildtime-workspace/#runtime > ${SOFTWARE_DIRECTORY}/runtime-workspace/nix-env.sh
+RUN mkdir -p /custom-software/runtime-workspace && \
+    nix print-dev-env /custom-software/buildtime-workspace/#runtime > /custom-software/runtime-workspace/nix-env.sh
 
 #
 # 4. Application bits and entrypoint
 #     - Copies the Gradle application distribution produced by installDist
 #     - Creates an entrypoint runtime wrapper that:
 #         - Applies the flake-defined runtime dev shell environment recorded at image build time
-#         - Delegates to the Gradle-generated launch script
+#         - Runs java on the distribution's lib/ jars, with the main class and its arguments taken from CMD
+#     - Keep exactly one CMD uncommented: Main for container runtimes (ECS, Fargate, Kubernetes, a host), LambdaHandler for AWS Lambda
 #
 
-COPY build/install/template-pure-java ${SOFTWARE_DIRECTORY}/runtime-workspace/executable
+COPY build/install/template-pure-java /custom-software/runtime-workspace/executable
 
 RUN printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -euo pipefail' \
   'set -a' \
-  ". ${SOFTWARE_DIRECTORY}/runtime-workspace/nix-env.sh" \
+  ". /custom-software/runtime-workspace/nix-env.sh" \
   'set +a' \
-  "exec ${SOFTWARE_DIRECTORY}/runtime-workspace/executable/bin/template-pure-java \"\$@\"" \
-  > ${SOFTWARE_DIRECTORY}/runtime-workspace/run-application && \
-  chmod +x ${SOFTWARE_DIRECTORY}/runtime-workspace/run-application
+  "exec java -XX:MaxRAMPercentage=75.0 -cp '/custom-software/runtime-workspace/executable/lib/*' \"\$@\"" \
+  > /custom-software/runtime-workspace/run-application && \
+  chmod +x /custom-software/runtime-workspace/run-application
 
-ENTRYPOINT ["sh", "-c", "exec \"${SOFTWARE_DIRECTORY}/runtime-workspace/run-application\" \"$@\"", "unusedAndUnpassedArgToAccountForShCOffset"]
-CMD []
+ENTRYPOINT ["/custom-software/runtime-workspace/run-application"]
+CMD ["io.template.Main"]
+# CMD ["com.amazonaws.services.lambda.runtime.api.client.AWSLambda", "io.template.LambdaHandler::handleRequest"]
