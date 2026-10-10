@@ -31,7 +31,6 @@ Java best practices.
 * Runs SpotBugs
 * Builds a container image with Podman, set to run the code entrypoint (tagged `<project-name>:latest`)
 * Saves the image as `build/container-image.tar`
-* Builds a Lambda deployment package as `build/lambda-deployment-package.zip`
 
 ### `./universal-build clean`
 
@@ -110,39 +109,44 @@ Correctness is guaranteed by idempotency: dying at any point (including SIGKILL,
 
 &nbsp;
 
-## 6. Outputs
+## 6. Output
 
-The template currently supports two deployment paths: an OCI/container image through `Main`, and AWS Lambda through `LambdaHandler`. Keep only the path your application uses and remove the other using the instructions below. Both paths share the execution and business logic. The AWS integrations are examples; the template can also support other cloud providers.
+The template builds one output: an OCI/container image that runs on container runtimes through `Main` and on AWS Lambda through `LambdaHandler`. Both entry points share the execution and business logic. The `Dockerfile` has one `CMD` line per entry point; keep exactly one uncommented. The AWS integrations are examples; the template can also support other cloud providers.
+
+| Runtime | `CMD` |
+|---|---|
+| Container, ECS task, Kubernetes, EC2 host (default) | `io.template.Main` |
+| AWS Lambda | `com.amazonaws.services.lambda.runtime.api.client.AWSLambda io.template.LambdaHandler::handleRequest` |
+
+The image's entrypoint applies the Nix runtime environment, then runs `java -XX:MaxRAMPercentage=75.0` on the jars in the distribution's `lib/`, followed by the `CMD`. The JDK and OS userland that run in production are the ones pinned by `flake.lock` and the `Dockerfile`, on every runtime.
 
 ### OCI / Container (`Main`)
 
-* For a container, ECS task, EC2 host or command-line run; the container image runs it
+* For a container, ECS task, EC2 host or command-line run
 
 To keep only Lambda, remove:
 
 * `src/main/java/io/template/Main.java` and its JaCoCo exclude in `build.gradle.kts`
 * The Shutdown section above and `closeResources` in `composition/AWSClientsModule.java`, including its unused `Injector` import
-* `containerImageName`, `podmanBuildImage`, `podmanSaveImageTar`, and `executeContainerImageSmokeTest` in `build.gradle.kts`; remove only the `podmanSaveImageTar` dependency from `build`, keeping the Lambda package dependency
-* The `application` plugin declaration and `application { ... }` configuration in `build.gradle.kts`; keep the `java` plugin for compilation and JAR packaging
-* `Dockerfile`, `.dockerignore`, and the container output bullets under Main Build Tasks
+* The `Main` `CMD` line in the `Dockerfile`, and uncomment the Lambda one
 
 ### AWS Lambda (`LambdaHandler`)
 
-* Handler: `io.template.LambdaHandler::handleRequest`, on the `java25` runtime
+* Lambda runs the image's entrypoint and `CMD`, so `java` starts the Lambda runtime interface client (`AWSLambda`), which polls the Lambda Runtime API and calls `LambdaHandler::handleRequest` for each event
 * The event JSON reaches `Executor` as its single input argument
-* `buildLambdaDeploymentPackage` (run by `build`) zips the application jar and every runtime classpath jar into the zip's `lib/`, which the Lambda Java runtime puts on the classpath
-* Deploy the zip with the infrastructure tool of your choice, for example CDK's `lambda.Code.fromAsset("build/lambda-deployment-package.zip")`
+* Deploy the image with the infrastructure tool of your choice, for example CDK's `lambda.DockerImageCode.fromImageAsset(".")` as the `code` of a `lambda.DockerImageFunction`
+* Lambda does not patch the JDK or OS inside an image. Patches arrive when `flake.lock` or the `Dockerfile` base image moves and the image is rebuilt
 * The Shutdown section does not apply: Lambda freezes and later discards the execution environment without signaling the process, so clients live for the environment's lifetime
 
 To keep only OCI/container deployment, remove:
 
 * `src/main/java/io/template/LambdaHandler.java` and its JaCoCo exclude in `build.gradle.kts`
-* `buildLambdaDeploymentPackage` and only its dependency in the `build` task, keeping the container build dependency
-* The `aws-lambda-java-core` dependency and the Lambda output bullet under Main Build Tasks
+* The `aws-lambda-java-core` and `aws-lambda-java-runtime-interface-client` dependencies
+* The Lambda `CMD` line in the `Dockerfile`
 
-After removing a deployment path, update this Outputs section and regenerate the Gradle lockfile using the workflow above. Keep the shared environment, execution, Guice modules, and DynamoDB sample unless you also choose to remove that sample.
+After removing an entry point, update this Output section and regenerate the Gradle lockfile using the workflow above. Keep the shared environment, execution, Guice modules, and DynamoDB sample unless you also choose to remove that sample.
 
-* Reference: <https://docs.aws.amazon.com/lambda/latest/dg/java-package.html>
+* Reference: <https://docs.aws.amazon.com/lambda/latest/dg/java-image.html>
 
 &nbsp;
 
