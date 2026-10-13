@@ -76,7 +76,7 @@ The consuming application's deployment pipeline must test the actual packaged im
 
 Publish each candidate once and deploy the same image digest through these stages. These templates provide application checks and image packaging; they do not configure deployment infrastructure or implement integration, smoke, or canary tests. Successful packaging alone does not establish that the application runs correctly.
 
-The rationale and the rejected alternatives are recorded in [Design Rationale](#design-rationale).
+The rationale and the rejected alternatives are recorded in [Design Rationale](#design-rationale). The planned multi-repository composition is described in [Future Four-Template Product Pipeline](#future-four-template-product-pipeline).
 
 ## 4. Workflows
 
@@ -358,6 +358,37 @@ The consuming application's deployment pipeline must test the actual packaged im
 * Continuous canary tests exercise important workflows. During gradual production rollout, use their results and release-specific error and latency metrics to stop or roll back unhealthy releases.
 
 Publish each candidate once and deploy the same image digest through these stages. These templates provide application checks and image packaging; they do not configure deployment infrastructure or implement integration, smoke, or canary tests. Successful packaging alone does not establish that the application runs correctly.
+
+### Future Four-Template Product Pipeline
+
+Status: Planned; the integrated example has not been implemented.
+
+For a product composed of independently built packages, the recommended structure is package-owned CI and a central product release pipeline. The first integrated example will connect four future templates: IaC, Java with Bazel, Python with Bazel, and TypeScript with Bazel.
+
+```text
+IaC repository              -> CI -> tested infrastructure artifacts --+
+Java/Bazel repository       -> CI -> tested application artifacts -----+
+Python/Bazel repository     -> CI -> tested application artifacts -----+-> Product pipeline repository
+TypeScript/Bazel repository -> CI -> tested application artifacts -----+   -> select exact package versions
+                                                                          -> assemble and publish OCI images
+                                                                          -> deploy infrastructure and services
+                                                                          -> integration and smoke tests
+                                                                          -> monitored production promotion
+```
+
+Each package repository owns compilation, tests, quality checks, and its complete release artifact. Application artifacts include the pinned inputs needed for OCI packaging; infrastructure artifacts include the deployment inputs and referenced assets needed by the infrastructure tool. Runtime payloads retain the native Linux/ARM64 release-platform contract. CI uploads artifacts under a consistent name such as `release-artifact-${{ github.sha }}`.
+
+The product pipeline repository owns image packaging, deployment order, environment configuration, integration and smoke testing, canary monitoring, promotion, and rollback. It consumes the tested package artifacts without recompiling application code. It assembles each candidate image once, publishes it, and promotes the same digest through deployment environments. The IaC deployment selects those published images and the matching runtime architecture.
+
+A product release selects a specific compatible set of package versions. Record each package's repository, commit SHA, producing CI run ID, and artifact name or ID. Each repository has its own commit SHA; a SHA suffix alone does not identify the complete product release or distinguish CI reruns. The pipeline can be mostly `.github/`; workflow inputs or committed release configuration identify the selected artifacts and deployment sequence. Preserve that release selection with the published outputs so deployment and rollback are repeatable.
+
+GitHub supports artifact downloads from another repository by supplying its repository, producing run ID, artifact name or ID, and a token with the required access. The default `GITHUB_TOKEN` is scoped to its own repository; use suitable cross-repository credentials, such as a GitHub App installation token with access to the participating repositories. See [artifact downloads](https://github.com/actions/download-artifact/tree/v4#download-artifacts-from-other-workflow-runs-or-repositories) and [GitHub token scope](https://docs.github.com/en/actions/concepts/security/github_token).
+
+Cross-repository orchestration requires an explicit trigger. The current templates' `workflow_run` trigger connects workflows within one repository. In the future integrated example, successful package CI can notify the product pipeline through `repository_dispatch`, passing its artifact identifiers. The product pipeline selects the complete release set and confirms the producing runs succeeded before packaging or deploying. See [GitHub repository dispatch](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#repository_dispatch).
+
+GitHub workflow artifacts provide the CI handoff and expire according to their retention policy. Retain published OCI images, infrastructure deployment artifacts, and any other inputs required for supported rollbacks in durable registry or object storage. See [GitHub artifact retention](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts).
+
+This plan is the recommended composition pattern for the future templates. The current legacy demonstration keeps its packaging workflow in the package repository until a product pipeline and integrated use case exist.
 
 ### Implementation state
 
