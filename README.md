@@ -36,7 +36,7 @@ Java best practices.
 
 Gradle's `installDist`, included in `build`, assembles the application payload under `build/release/executable`. The CI tar command combines that directory with `Dockerfile`, `flake.nix`, `flake.lock`, and `.dockerignore` from the checkout. No staging script or extra copy is needed.
 
-The separate CD job downloads the complete image-build context archive from the same workflow run and packages it using Docker's official Buildx and build-push actions. The workflow pins the action commits, Buildx version, and BuildKit image digest. The archive contains `Dockerfile`, `flake.nix`, `flake.lock`, `.dockerignore`, and `executable/`. CD extracts these directly into its workspace and uses them as the build context. It exports the Linux/ARM64 image directly to an archive.
+The separate CD job downloads the complete image-build context archive from the triggering CI workflow run and packages it using Docker's official Buildx and build-push actions. The workflow pins the action commits, Buildx version, and BuildKit image digest. The archive contains `Dockerfile`, `flake.nix`, `flake.lock`, `.dockerignore`, and `executable/`. CD extracts these directly into its workspace and uses them as the build context. It exports the Linux/ARM64 image directly to an archive.
 
 Packaging consumes the staged artifact and does not run application compilation or tests. The workflow exports `build/oci-image.tar`.
 
@@ -56,13 +56,13 @@ Packaging consumes the staged artifact and does not run application compilation 
 
 ## Release pipeline
 
-Application compilation and image packaging are separate. `.github/workflows/ci.yml` runs application checks on `ubuntu-24.04-arm`, produces the Linux/ARM64 payload under `build/release`, and uploads an archive that preserves executable permissions. On a push to `main`, a separate **CD image packaging** job downloads that same run's named artifact and assembles the image entirely from its contents; the CD job does not check out the repository. Pull requests run the application build and artifact archiving; they do not construct a release image.
+Application compilation and image packaging are separate. `.github/workflows/ci.yml` runs application checks on `ubuntu-24.04-arm`, produces the Linux/ARM64 payload under `build/release`, and uploads an archive that preserves executable permissions. After CI succeeds on a push to `main`, `.github/workflows/cd.yml` downloads that CI run's named artifact and assembles the image entirely from its contents; the CD job does not check out the repository. Pull requests run the application build and artifact archiving; they do not construct a release image.
 
 Local build outputs are development outputs, never release inputs. Release jobs use the committed `ubuntu-24.04-arm` runner selection and Linux/ARM64 image configuration. The consuming deployment IaC must select the matching runtime platform; no emulation or cross-compilation is used.
 
 Image-builder setup belongs to the GitHub workflow; the consuming deployment pipeline owns runtime testing. The application flake contains application build and runtime dependencies; it does not provide pipeline tools. Nix is installed on the application-build runner and inside the Dockerfile for the runtime environment, but not on the CD runner.
 
-GitHub's artifact actions provide the same-run handoff: packaging waits for the successful application-build job and downloads `release-artifact-${{ github.sha }}`. GitHub automatically checks the uploaded artifact's digest on download; a mismatch is reported as a warning. See [GitHub artifact documentation](https://docs.github.com/en/actions/tutorials/store-and-share-data#validating-artifacts).
+GitHub's artifact actions provide the handoff between workflows: CD runs after CI completes successfully on a push to `main` and downloads `release-artifact-${{ github.event.workflow_run.head_sha }}` from `${{ github.event.workflow_run.id }}`, using the workflow's GitHub token with `actions: read` permission. Both the downloaded artifact and exported OCI archive are named for that CI commit, rather than CD's default-branch commit. GitHub automatically checks the uploaded artifact's digest on download; a mismatch is reported as a warning. See [GitHub artifact documentation](https://docs.github.com/en/actions/tutorials/store-and-share-data#validating-artifacts).
 
 The workflow exports an OCI-layout tar archive (`oci-image.tar`) as a pipeline artifact. The consuming deployment pipeline imports or publishes it with an OCI-compatible tool. Registry publication and environment deployment are integration points for the consuming project's infrastructure pipeline. Publish once and promote the same image digest. Select ARM64 in Lambda or Linux/ARM64 in ECS/CDK; matching runtime libraries remain part of native dependency validation.
 
@@ -335,7 +335,7 @@ Options 2 and 3 are rejected for this goal and its constraints, not declared inv
 
 The packaging step must identify and consume the exact versioned fleet artifacts, together with the pinned packaging inputs. It must not substitute local outputs or silently recompile the application under a different environment. Artifact identities must remain traceable to the tested source revision.
 
-GitHub's artifact actions scope the download to the current workflow run. CI checks out the run's source revision and packages all image-build inputs with the compiled payload. CD uses only that archive; the artifact name includes `${{ github.sha }}`. The upload action creates an immutable artifact; download automatically checks its digest, reporting a warning if it differs. This pipeline uses that managed handoff instead of maintaining its own revision stamps and checksum manifests. See [GitHub artifact documentation](https://docs.github.com/en/actions/tutorials/store-and-share-data).
+CI checks out its run's source revision and packages all image-build inputs with the compiled payload. The separate CD workflow listens for CI completion on `main` and packages only successful push runs. GitHub's artifact actions scope the download to the triggering CI run using `${{ github.event.workflow_run.id }}` and the workflow's token with `actions: read` permission. CD uses only that archive; its input and output artifact names include the CI commit `${{ github.event.workflow_run.head_sha }}`, rather than CD's default-branch commit. The CD workflow must be present on the default branch before GitHub can trigger it. The upload action creates an immutable artifact; download automatically checks its digest, reporting a warning if it differs. This pipeline uses that managed handoff instead of maintaining its own revision stamps and checksum manifests. See [GitHub artifact documentation](https://docs.github.com/en/actions/tutorials/store-and-share-data).
 
 Image construction occurs once per release candidate before runtime validation. Environment promotion changes deployment configuration, not the image contents. Base-image or toolchain updates create new release candidates and go through validation again.
 
@@ -343,7 +343,7 @@ For multiple runtime architectures, produce and validate a release candidate for
 
 ### Pipeline tooling boundary
 
-The committed runner and image configuration select Linux/ARM64; the consuming deployment IaC must select the same runtime platform. Pipeline scripts do not repeat this configuration as runtime assertions or compare a self-assigned platform marker with a constant. The same-run GitHub artifact handoff replaces custom revision markers and checksum manifests.
+The committed runner and image configuration select Linux/ARM64; the consuming deployment IaC must select the same runtime platform. Pipeline scripts do not repeat this configuration as runtime assertions or compare a self-assigned platform marker with a constant. The GitHub artifact handoff from the exact CI run replaces custom revision markers and checksum manifests.
 
 Application manifests, dependency locks, and Nix flakes define application build and runtime dependencies. Image-builder and container-runtime setup belongs to the pipeline configuration under `.github/`; application build commands do not invoke those pipeline tools.
 
@@ -365,7 +365,7 @@ CD jobs do not check out the source repository. The Dockerfile templates' archiv
 
 The Gradle template's `build` includes `installDist`, which assembles application and dependency JARs under `build/release/executable/lib`. The CI tar command bundles that payload with the Dockerfile, runtime Nix files, and ignore file from the checkout. Gradle owns application packaging; the workflow owns the CD artifact bundle, transfer, and image construction.
 
-The templates provide separate application-build and image-packaging jobs on native Linux/ARM64 runners. Packaging depends on the successful application-build job, downloads that workflow run's named artifact, and exports the image archive. Bazel OCI assembly has no application-compilation dependency. The legacy JavaScript fleet build compiles the Lambda client's native addon before artifact transfer.
+The templates provide separate CI and CD workflow files, each with its own job on a native Linux/ARM64 runner. CD uses the `workflow_run` event to wait for CI completion on `main`, requires a successful push run, downloads that exact CI run's named artifact, and exports the image archive. CI runs for pull requests and pushes to `main`; CD does not package pull-request artifacts. Bazel OCI assembly has no application-compilation dependency. The legacy JavaScript fleet build compiles the Lambda client's native addon before artifact transfer.
 
 The workflow exports an OCI-layout tar archive named `oci-image.tar`, using the shared OCI image format. The Dockerfile workflows select the OCI exporter; Bazel archives its OCI layout directly without a Docker-format conversion or container-loader target. Registry publication and environment deployment belong to the consuming project's infrastructure pipeline and are not configured here. The packaging workflow does not establish runtime correctness; deployment tests must do so.
 
