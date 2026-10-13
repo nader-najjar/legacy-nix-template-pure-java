@@ -8,6 +8,8 @@ charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
 
 [*.nix]
 indent_style = space
@@ -21,7 +23,11 @@ indent_size = 4
 indent_style = space
 indent_size = 4
 
-[{*.js,*.ts,*.tsx,*.cjs}]
+[{*.bzl,*.bazel}]
+indent_style = space
+indent_size = 4
+
+[{*.js,*.mjs,*.cjs,*.jsx,*.ts,*.mts,*.cts,*.tsx}]
 indent_style = space
 indent_size = 2
 
