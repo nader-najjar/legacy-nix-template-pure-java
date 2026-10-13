@@ -1,4 +1,4 @@
-name: OCI Image Packaging
+name: CD
 
 on:
   workflow_run:
@@ -11,8 +11,8 @@ permissions:
   actions: read
 
 jobs:
-  image_packaging:
-    name: Image Packaging
+  oci_image_packaging:
+    name: OCI Image Packaging
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-24.04-arm
     steps:
