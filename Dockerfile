@@ -51,14 +51,14 @@ RUN mkdir -p /custom-software/runtime-workspace && \
 
 #
 # 4. Application bits and entrypoint
-#     - Copies the Gradle application distribution produced by installDist
+#     - Copies the application distribution from the fleet release artifact
 #     - Creates an entrypoint runtime wrapper that:
 #         - Applies the flake-defined runtime dev shell environment recorded at image build time
 #         - Runs java on the distribution's lib/ jars, with the main class and its arguments taken from CMD
 #     - Keep exactly one CMD uncommented: Main for container runtimes (ECS, Fargate, Kubernetes, a host), LambdaHandler for AWS Lambda
 #
 
-COPY build/install/template-pure-java /custom-software/runtime-workspace/executable
+COPY executable /custom-software/runtime-workspace/executable
 
 RUN printf '%s\n' \
   '#!/usr/bin/env bash' \

@@ -1,11 +1,10 @@
 import com.github.spotbugs.snom.Confidence
 import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.SpotBugsTask
-import org.gradle.api.tasks.Exec
 
 plugins {
     id("java")
-    id("application")
+    id("distribution")
     id("jacoco")
     id("checkstyle")
     id("com.github.spotbugs") version "6.0.26"
@@ -43,10 +42,6 @@ repositories {
 dependencyLocking {
     lockAllConfigurations()
     lockMode = LockMode.STRICT
-}
-
-application {
-    mainClass.set("io.template.Main")
 }
 
 dependencies {
@@ -102,44 +97,26 @@ tasks.named<Delete>("clean") {
 }
 
 /**
- * Custom Additions To Build Task
- *
- * 1. OS Image Build
- *     - Uses Podman as the canonical container engine so the build process is the same across dev machines and CI
- *     - The image is tagged "${rootProject.name}:latest"
- *     - The image is saved as a tarball to build/container-image.tar
- *     - Any following steps (i.e. pushing the image to ECR, injecting the tarball to a host, etc) is up to the CI/CD pipeline definition, not the build system
+ * Include the application JAR and runtime dependency JARs in the standard build.
  */
 
-val containerImageName = "${rootProject.name}:latest"
-
-tasks.register<Exec>("podmanBuildImage") {
-    group = "container"
-    description = "Builds the container image $containerImageName using Podman"
-    dependsOn(tasks.named("installDist"))
-    commandLine("podman", "build", "-q", "-t", containerImageName, project.projectDir.absolutePath)
+distributions {
+    main {
+        contents {
+            into("lib") {
+                from(tasks.named("jar"))
+                from(configurations.runtimeClasspath)
+            }
+        }
+    }
 }
 
-tasks.register<Exec>("podmanSaveImageTar") {
-    group = "container"
-    description = "Saves the container image $containerImageName to build/container-image.tar"
-    dependsOn(tasks.named("podmanBuildImage"))
-    commandLine("podman", "save", "-o", "build/container-image.tar", containerImageName)
+tasks.named<Sync>("installDist") {
+    into(layout.buildDirectory.dir("release/executable"))
 }
 
 tasks.named("build") {
-    dependsOn(tasks.named("podmanSaveImageTar"))
-}
-
-/**
- * Smoke Test Task
- */
-
-tasks.register<Exec>("executeContainerImageSmokeTest") {
-    group = "container"
-    description = "Runs a short-lived container from $containerImageName to verify it starts"
-    dependsOn(tasks.named("build"))
-    commandLine("podman", "run", "--rm", containerImageName)
+    dependsOn(tasks.named("installDist"))
 }
 
 /**

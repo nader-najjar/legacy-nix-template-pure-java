@@ -64,7 +64,7 @@ update_nix_flake_lockfile() {
 }
 
 print_java_path_for_ide() {
-  java_home="$(nix ${NIX_FLAGS} develop "${SCRIPT_DIR}#default" --command sh -c 'echo "${JAVA_HOME:-}"')"
+  java_home="$(nix ${NIX_FLAGS} develop --no-update-lock-file "${SCRIPT_DIR}#default" --command sh -c 'echo "${JAVA_HOME:-}"')"
   if [ -z "$java_home" ]; then
     fail "JAVA_HOME is not set inside the nix develop environment; ensure your flake exposes a JDK."
   fi
@@ -80,7 +80,7 @@ print_build_start_log() {
 }
 
 gradle_handoff() {
-  exec nix ${NIX_FLAGS} develop "${SCRIPT_DIR}#default" --command sh -c 'cd "$1" && shift && ./gradlew "$@"' _ "${SCRIPT_DIR}" "$@"
+  exec nix ${NIX_FLAGS} develop --no-update-lock-file "${SCRIPT_DIR}#default" --command sh -c 'cd "$1" && shift && ./gradlew "$@"' _ "${SCRIPT_DIR}" "$@"
 }
 
 main() {

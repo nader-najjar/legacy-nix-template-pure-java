@@ -18,7 +18,8 @@ import org.slf4j.MDC;
 
 /**
  * AWS Lambda entry point.
- * The following classes must not have associated unit tests - smoke tests are used in their place:
+ * The following classes are excluded from unit tests and require deployment smoke tests
+ * supplied by the consuming application:
  *   - `LambdaHandler.java`
  *   - `composition/*`
  */

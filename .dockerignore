@@ -1,5 +1,5 @@
 **
 !flake.nix
 !flake.lock
-!build/install/template-pure-java/
-!build/install/template-pure-java/**
+!executable/
+!executable/**
