@@ -1,0 +1,15 @@
+name: Start Pipeline
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  start_pipeline:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - run: gh workflow run pipeline.yml --repo nader-najjar/template-pure-pipeline --ref main -f "java_commit=$GITHUB_SHA"
+        env:
+          GH_TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}

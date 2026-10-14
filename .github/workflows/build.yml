@@ -1,0 +1,59 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        type: string
+        default: ''
+      source_sha:
+        type: string
+        default: ''
+    outputs:
+      accepted:
+        value: ${{ jobs.build.outputs.accepted }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04-arm
+    concurrency:
+      group: ${{ inputs.repository != '' && 'pipeline-stage-build' || format('pr-build-{0}', github.run_id) }}
+      queue: max
+      cancel-in-progress: false
+    outputs:
+      accepted: ${{ inputs.repository == '' || steps.admission.outputs.accepted == 'true' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        if: inputs.repository != ''
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .pipeline
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - run: ./.pipeline/.github/scripts/admit-stage build
+        if: inputs.repository != ''
+        id: admission
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        if: inputs.repository == '' || steps.admission.outputs.accepted == 'true'
+        with:
+          repository: ${{ inputs.repository || github.repository }}
+          ref: ${{ inputs.source_sha || github.sha }}
+          persist-credentials: false
+      - uses: cachix/install-nix-action@b85815f71a6de0ddee80b8a80a98d43f4bcc66c7 # v31
+        if: inputs.repository == '' || steps.admission.outputs.accepted == 'true'
+      - run: ./universal-build build
+        if: inputs.repository == '' || steps.admission.outputs.accepted == 'true'
+      - run: tar -czf release-artifact.tar.gz Dockerfile flake.nix flake.lock .dockerignore -C build/release executable
+        if: inputs.repository == '' || steps.admission.outputs.accepted == 'true'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: inputs.repository == '' || steps.admission.outputs.accepted == 'true'
+        with:
+          name: release-artifact-${{ inputs.source_sha || github.sha }}
+          path: release-artifact.tar.gz
+          if-no-files-found: error
+          overwrite: true
